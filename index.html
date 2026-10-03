@@ -799,10 +799,42 @@ function allSets(){
   store.custom.forEach(function(s){out.push({id:'c'+s.id,cid:s.id,title:s.title,items:s.items,custom:true})});
   return out;
 }
+/* ---- シリーズ：セット名が「○○ 第N話 …」なら同じシリーズとしてまとめる（末尾の（…）はレベルとして別シリーズ） ---- */
+function zen2num(s){return parseInt(String(s).replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0)}),10)}
+function seriesOf(title){
+  var m=String(title).match(/^(.+?)\s*第\s*([0-9０-９]+)\s*話\s*(.*)$/);
+  if(!m)return null;
+  var rest=m[3].trim(),lv=rest.match(/([（(][^（）()]+[）)])\s*$/),suffix=lv?lv[1]:'';
+  var ep=rest;if(lv)ep=rest.slice(0,rest.length-lv[0].length).trim();
+  var name=m[1].trim();
+  return {key:name+'\u0001'+suffix,label:name+suffix,no:zen2num(m[2]),ep:ep};
+}
+/* 2話以上あるシリーズだけをまとめる。順番は最初の話が出てくる位置 */
+function seriesGroups(sets){
+  var map={},order=[];
+  sets.forEach(function(s){
+    var r=seriesOf(s.title);if(!r)return;
+    if(!map[r.key]){map[r.key]={key:r.key,label:r.label,sets:[]};order.push(r.key)}
+    map[r.key].sets.push({set:s,no:r.no,ep:r.ep});
+  });
+  return order.map(function(k){return map[k]}).filter(function(g){return g.sets.length>=2}).map(function(g){
+    g.sets.sort(function(a,b){return a.no-b.no});return g;
+  });
+}
+/* 選んでいるセット（すべて／1セット／シリーズまとめて）。見つからなければすべて */
+function pickSets(sets,sel){
+  if(sel==='all')return sets;
+  if(String(sel).indexOf('g:')===0){
+    var key=String(sel).slice(2),g=seriesGroups(sets).filter(function(x){return x.key===key})[0];
+    return g?g.sets.map(function(x){return x.set}):sets;
+  }
+  var f=sets.filter(function(s){return s.id===sel});
+  return f.length?f:sets;
+}
 function buildQueue(fmOverride){
   var fm=fmOverride||cfg('filter'),sel=cfg('set');
   var sets=allSets();
-  if(sel!=='all'){var f=sets.filter(function(s){return s.id===sel});if(f.length)sets=f}
+  sets=pickSets(sets,sel);
   var ord=cfg('order');
   if(ord==='setshuffle')sets=shuffle(sets);
   var q=[];
@@ -969,6 +1001,21 @@ document.addEventListener('visibilitychange',function(){
 
 /* ===== 設定画面 ===== */
 function opt(v,l,cur){return '<option value="'+esc(v)+'"'+(String(cur)===String(v)?' selected':'')+'>'+esc(l)+'</option>'}
+/* 問題セットの選択肢：シリーズは見出し（optgroup）でまとめ、先頭に「全○話まとめて」 */
+function setOptionsHtml(sets,cur){
+  var cnt=function(list){return list.reduce(function(n,s){return n+s.items.length},0)};
+  var groups=seriesGroups(sets),inG={};
+  groups.forEach(function(g){g.sets.forEach(function(x){inG[x.set.id]=1})});
+  var mark=function(s){return s.custom?' ＊追加':''};
+  var h=opt('all','すべて（'+sets.length+'セット）',cur);
+  sets.forEach(function(s){if(!inG[s.id])h+=opt(s.id,s.title+'（'+s.items.length+'問）'+mark(s),cur)});
+  groups.forEach(function(g){
+    var list=g.sets.map(function(x){return x.set});
+    h+='<optgroup label="'+esc(g.label)+'">'+opt('g:'+g.key,'▶ 全'+list.length+'話まとめて（'+cnt(list)+'問）',cur)+
+      g.sets.map(function(x){return opt(x.set.id,'第'+x.no+'話 '+x.ep+'（'+x.set.items.length+'問）'+mark(x.set),cur)}).join('')+'</optgroup>';
+  });
+  return h;
+}
 function modeNote(m){
   return m==='auto'?'聞く → ピッで話す → 自動で判定 → 次へ。手を使わずに。'
     :m==='listen'?'問題音声→解答音声を繰り返し流します。「ループ」をオンにすると、ループ再生して練習できます。'
@@ -998,8 +1045,7 @@ function showSetup(){
   h+=guideHtml(false);
   if(!SR)h+='<div class="warn">この環境では音声認識が使えません。連続モードは使えません。通常モードでは、キーボードの音声入力で答えられます。Safari か Chrome でこのページを直接開くと、マイクが使えることがあります。</div>';
 
-  h+='<div class="field"><label>問題セット</label><select id="fSet">'+opt('all','すべて（'+sets.length+'セット）',cfg('set'))+
-    sets.map(function(s){return opt(s.id,s.title+'（'+s.items.length+'問）'+(s.custom?' ＊追加':''),cfg('set'))}).join('')+'</select></div>';
+  h+='<div class="field"><label>問題セット</label><select id="fSet">'+setOptionsHtml(sets,cfg('set'))+'</select></div>';
   h+='<div class="field"><label>モード</label><div class="seg"><button id="mNormal" data-m="normal">通常（手入力／マイク）</button><button id="mAuto" data-m="auto"'+(SR?'':' disabled')+'>連続（音声で自動）</button></div><p class="note" id="modeNote"></p></div>';
 
   // よく変える設定は、2列のタイル。タップするとすぐ選択肢が出る（selectを透明にして重ねている）
@@ -1105,7 +1151,7 @@ function addSection(){
     '<label class="chk"><input type="checkbox" id="aLast" checked>★がなければ最後の1行を全文にする</label>'+
     '<button id="aBtn" class="btn pri">追加する</button><div id="aMsg" class="err"></div>'+
     '<h2 style="margin-top:16px">方法2：AIに分けてもらう（ChatGPT・Gemini・Claude など）</h2>'+
-    '<p class="note">① 下のボタンでプロンプトをコピー → ② お使いのAIに貼り付け、いちばん下の「入力」を自分の文に書き換えて送信 → ③ 出てきたコードブロックを、上の欄に貼って「追加する」。追加するときに、元の英文と異なる行がないかを自動で確認します。</p>'+
+    '<p class="note">① 下のボタンでプロンプトをコピー → ② お使いのAIに貼り付け、いちばん下の「入力」を自分の文に書き換えて送信 → ③ 出てきたコードブロックを、上の欄に貼って「追加する」。追加するときに、元の英文と異なる行がないかを自動で確認します。</p><p class="note">続きものは、1行目のセット名を「# 旅の英語 第1話 空港で」「# 旅の英語 第2話 ホテルで」のように「○○ 第N話 …」の形にすると、問題セットの一覧で1つのシリーズにまとまり、「全○話まとめて」で続けて練習できます。末尾に（上級）などを付けると、別のシリーズとして分かれます。</p>'+
     '<div class="rowbtn"><button id="pFixed" class="btn sm ptype">英文を固定して分ける<br><span class="s">日本語＋英文を渡す</span></button><button id="pFree" class="btn sm ptype">日本語だけで作る<br><span class="s">英訳もAIが作る</span></button></div><div id="pHolder"></div>'+
     '<h2 style="margin-top:16px">追加したセット</h2>'+
     (cs.length?cs.map(function(s){return '<div class="setrow"><span>'+esc(s.title)+'（'+s.items.length+'問）</span><button class="btn sm" data-cp="'+s.id+'">コピー</button><button class="btn sm" data-del="'+s.id+'">削除</button></div><div data-cph="'+s.id+'"></div>'}).join(''):'<p class="note">まだありません。</p>')+
@@ -1461,7 +1507,7 @@ function vaultDue(){
 /* 出す全文を選ぶ：この回に解いた全文 → 前に解いた全文 → 出題中のセットの全文 → すべて */
 function pickVault(){
   var sel=cfg('set'),sets=allSets();
-  if(sel!=='all'){var f=sets.filter(function(s){return s.id===sel});if(f.length)sets=f}
+  sets=pickSets(sets,sel);
   var pool=[];
   sets.forEach(function(s){
     var parts=[];
@@ -1692,7 +1738,7 @@ function gameSplit(ch){
 }
 function gameSentences(){
   var sel=cfg('set'),sets=allSets();
-  if(sel!=='all'){var f=sets.filter(function(s){return s.id===sel});if(f.length)sets=f}
+  sets=pickSets(sets,sel);
   var make=function(sets){
     var out=[];
     sets.forEach(function(s){
