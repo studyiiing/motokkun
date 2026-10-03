@@ -14,21 +14,8 @@
   ・すべての a は、全文の英語の「連続した一部分」にする
   ・最後の1問に full:true を付ける
 
-  下のセットは動作確認用のサンプルです。自分の問題を追加したら、消して構いません。
 */
 window.DRILL_SETS = [
-  { title:"サンプル：父の通勤", items:[
-    { q:"私の父は", a:"My father" },
-    { q:"小さな会社で働いている", a:"who works at a small company" },
-    { q:"私の父は、小さな会社で働いていて、", a:"My father, who works at a small company," },
-    { q:"毎日電車で会社へ行きます", a:"goes to the office by train every day." },
-    { q:"小さな会社で働いている私の父は、毎日電車で会社へ行きます。", a:"My father, who works at a small company, goes to the office by train every day.", full:true }
-  ]},
-  { title:"サンプル：もしもの話", items:[
-    { q:"もしもっと時間があれば", a:"If I had more time," },
-    { q:"毎朝英語を勉強するのに", a:"I would study English every morning." },
-    { q:"もしもっと時間があれば、毎朝英語を勉強するのに。", a:"If I had more time, I would study English every morning.", full:true }
-  ]},
   /* 出典：「What if a Hummingbird Wears a Tiny Backpack?」Science Journal for Kids（2026, CC BY）。もとの論文：Sargent et al. (2026) Animal Biotelemetry。
      https://www.sciencejournalforkids.org/wp-content/uploads/2026/08/hummingbird-backpacks_article.pdf
      英文は記事のまま。日本語訳と区切りは独自。 */
