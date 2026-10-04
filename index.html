@@ -343,6 +343,7 @@ details.guide[open]{padding-bottom:12px}
 .rmsg{font-size:13px;margin:6px 0 0;min-height:1.4em;font-weight:700;color:var(--ac)}
 .btn.game{background:var(--navy);border-color:var(--navy);color:var(--navy-ink);font-weight:700}
 .btn.game .r{font-family:"Press Start 2P",monospace;font-size:8px;letter-spacing:.06em;margin-right:6px;vertical-align:1px}
+.btn.game .stk{display:block;font-size:12px;font-weight:400;opacity:.8;margin-top:2px;letter-spacing:.04em}
 @media (prefers-color-scheme:dark){.btn.game{background:var(--ac);border-color:var(--ac);color:#0a0f1e}}
 @media (prefers-reduced-motion:reduce){.gbox .lid{transition:none}}
 /* ブロックキャッチ（液晶ゲーム）。クラスはすべて bc- で始める */
@@ -1664,7 +1665,7 @@ function showVault(p,onDone,isTry){
     var res=$('#result');res.innerHTML=r;res.classList.remove('hidden');
     $('#bVSay').onclick=function(){speakEn(p.a)};
     $('#bVBack').onclick=back;
-    var showGameBtn=function(){if(id!==runId||!plus.plays)return;var g=$('#bVGame');g.innerHTML='<span class="r">GAME</span>ブロックキャッチで遊ぶ（あと'+plus.plays+'回）';g.classList.remove('hidden')};
+    var showGameBtn=function(){if(id!==runId||!plus.plays)return;var g=$('#bVGame');g.innerHTML='<span class="r">GAME</span>ブロックキャッチで遊ぶ<span class="stk">ストック あと'+plus.plays+'回</span>';g.classList.remove('hidden')};
     $('#bVGame').onclick=function(){showGame(function(){if(isTry)showSetup();else{renderQuiz();advance()}},isTry?'設定へ戻る':'練習にもどる')};
     if(gb)playReward(gb,showGameBtn);else showGameBtn();
     if(cfg('readEn'))wait(ok?700:900,function(){if(id===runId)speakEn(p.a)});
@@ -1681,7 +1682,7 @@ function plusTilesHtml(){
   var doneToday=!!plus.days[dkey(today)];
   return '<div class="ptiles">'+
     '<button class="ptile" id="tCal" type="button"><span class="tl">学習カレンダー</span><span class="tv">連続 '+st+'日'+(doneToday||!st?'':'<small>今日まだ</small>')+'</span><span class="wk">'+wk+'</span></button>'+
-    '<button class="ptile" id="tGame" type="button"><span class="tl">ブロックキャッチ</span><span class="tv">'+(plus.plays?'あと '+plus.plays+'回':'ブロック '+plus.blocks+'/3')+'</span><span class="bslots">'+sl+'</span></button>'+
+    '<button class="ptile" id="tGame" type="button"><span class="tl">ブロックキャッチ</span><span class="tv">'+(plus.plays?'ストック '+plus.plays+'回':'ブロック '+plus.blocks+'/3')+'</span><span class="bslots">'+sl+'</span></button>'+
     '</div>';
 }
 function bindPlusTiles(){
