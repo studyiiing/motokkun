@@ -801,15 +801,23 @@ function allSets(){
   store.custom.forEach(function(s){out.push({id:'c'+s.id,cid:s.id,title:s.title,items:s.items,custom:true})});
   return out;
 }
-/* ---- シリーズ：セット名が「○○ 第N話 …」なら同じシリーズとしてまとめる（末尾の（…）はレベルとして別シリーズ） ---- */
-function zen2num(s){return parseInt(String(s).replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0)}),10)}
+/* ---- シリーズ：セット名が「○○ 第N話 …」（第N章・第N回、漢数字も可）なら同じシリーズとしてまとめる（末尾の（…）はレベルとして別シリーズ） ---- */
+var KNUM={'〇':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+function zen2num(s){
+  s=String(s).replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0)});
+  if(/^[0-9]+$/.test(s))return parseInt(s,10);
+  var n=0,cur=0;   /* 漢数字（百まで）：十二→12、二十→20、百五→105 */
+  for(var i=0;i<s.length;i++){var c=s[i];
+    if(c==='百'){n+=(cur||1)*100;cur=0}else if(c==='十'){n+=(cur||1)*10;cur=0}else cur=KNUM[c]||0}
+  return n+cur;
+}
 function seriesOf(title){
-  var m=String(title).match(/^(.+?)\s*第\s*([0-9０-９]+)\s*話\s*(.*)$/);
+  var m=String(title).match(/^(.+?)\s*第\s*([0-9０-９〇一二三四五六七八九十百]+)\s*(話|章|回)\s*(.*)$/);
   if(!m)return null;
-  var rest=m[3].trim(),lv=rest.match(/([（(][^（）()]+[）)])\s*$/),suffix=lv?lv[1]:'';
+  var rest=m[4].trim(),lv=rest.match(/([（(][^（）()]+[）)])\s*$/),suffix=lv?lv[1]:'';
   var ep=rest;if(lv)ep=rest.slice(0,rest.length-lv[0].length).trim();
   var name=m[1].trim();
-  return {key:name+'\u0001'+suffix,label:name+suffix,no:zen2num(m[2]),ep:ep};
+  return {key:name+'\u0001'+suffix,label:name+suffix,no:zen2num(m[2]),unit:m[3],ep:ep};
 }
 /* 2話以上あるシリーズだけをまとめる。順番は最初の話が出てくる位置 */
 function seriesGroups(sets){
@@ -817,7 +825,7 @@ function seriesGroups(sets){
   sets.forEach(function(s){
     var r=seriesOf(s.title);if(!r)return;
     if(!map[r.key]){map[r.key]={key:r.key,label:r.label,sets:[]};order.push(r.key)}
-    map[r.key].sets.push({set:s,no:r.no,ep:r.ep});
+    map[r.key].sets.push({set:s,no:r.no,unit:r.unit,ep:r.ep});
   });
   return order.map(function(k){return map[k]}).filter(function(g){return g.sets.length>=2}).map(function(g){
     g.sets.sort(function(a,b){return a.no-b.no});return g;
@@ -1035,8 +1043,8 @@ function setOptionsHtml(sets,cur){
   sets.forEach(function(s){if(!inG[s.id])h+=opt(s.id,s.title+'（'+s.items.length+'問）'+mark(s),cur)});
   groups.forEach(function(g){
     var list=g.sets.map(function(x){return x.set});
-    h+='<optgroup label="'+esc(g.label)+'">'+opt('g:'+g.key,'▶ 全'+list.length+'話まとめて（'+cnt(list)+'問）',cur)+
-      g.sets.map(function(x){return opt(x.set.id,'第'+x.no+'話 '+x.ep+'（'+x.set.items.length+'問）'+mark(x.set),cur)}).join('')+'</optgroup>';
+    h+='<optgroup label="'+esc(g.label)+'">'+opt('g:'+g.key,'▶ 全'+list.length+g.sets[0].unit+'まとめて（'+cnt(list)+'問）',cur)+
+      g.sets.map(function(x){return opt(x.set.id,'第'+x.no+x.unit+' '+x.ep+'（'+x.set.items.length+'問）'+mark(x.set),cur)}).join('')+'</optgroup>';
   });
   return h;
 }
