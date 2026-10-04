@@ -102,6 +102,7 @@ textarea{resize:vertical;line-height:1.5}
 .btn.ptype:active .s,.btn.ptype.on .s{color:rgba(255,255,255,.85)}
 @media (prefers-color-scheme:dark){.btn.ptype:active,.btn.ptype.on{color:#0a0f1e}.btn.ptype:active .s,.btn.ptype.on .s{color:rgba(10,15,30,.75)}}
 .btn.big{width:100%;font-size:17px;min-height:54px;font-weight:700;letter-spacing:.06em;margin-top:6px}
+.linkbtn{display:block;margin:10px auto 0;padding:6px 10px;background:none;border:0;color:var(--mut);font:inherit;font-size:14px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .btn.rec{border-color:var(--ng);color:var(--ng);background:var(--ngbg)}
 
 /* 問題セットの選択（プルダウンと同じ見た目に） */
@@ -402,7 +403,7 @@ details.guide[open]{padding-bottom:12px}
 (function(){
 'use strict';
 
-var VER='1.0';   // 公開版。eigodrill/next.html v2.17 がもと（PLUSの機能を含む）
+var VER='1.1';   // 公開版。eigodrill/next.html v2.17 がもと（PLUSの機能を含む）
 /* AIに渡す分割プロンプト（prompts/fixed.txt と prompts/free.txt から組み込み） */
 var PROMPTS={fixed:"あなたは、英作文・スピーキング教材の作成者です。\n私が渡す「日本語の文」と「英文」のペアを、積み上げ式の練習問題に分割してください。\n英文は、1文字も変えてはいけません。切って並べるだけです。\n\n■ 練習の仕組み\n日本語の意味のかたまりごとに短い部品を出題し、少しずつつなげて、最後に全文を英語で言えるようにします。\n\n■ 出力の形式\n・コードブロック1つだけを出力します。ブロックの外には、説明・前置き・あとがきを一切書きません。\n・1行が1問です。形は「日本語｜English」。区切りは全角の縦棒「｜」を1つだけ使います。日本語側にも英語側にも「｜」は入れません。\n・1行目は「# セット名」。入力の内容を表す短い日本語の題にします。\n・入力の1文ごとに、その積み上げの最後の行（全文の行）だけ、行頭に「★」を付けます。\n\n■ ルール\n1. 英文は書き換えない。単語、語順、大文字・小文字、句読点（, ; . など）、ハイフン、かっこも、原文のまま。文法や表現に疑問があっても直しません。\n2. 分ける単位は「日本語の意味のかたまり」です（主語のまとまり、動作、修飾する節、時・場所・理由・条件を表す句など）。英語の語順で並べます。日本語の語順と違うときは、その英語のかたまりが表す意味を、自然な日本語で書きます。\n3. 各行の英語は、全文の英語の「連続した一部分」にします。途中を飛ばしたり、順序を入れ替えたりしません（例外は、ルール6の主語の補いだけ）。\n4. 英語のかたまりは、だいたい2〜8語です。冠詞・前置詞・接続詞だけで始まる、または終わる切り方はしません。句読点は、そのかたまりの後ろに付いているものを、そのまま残します。\n5. 積み上げの並べ方：部品を左から順に出し、隣り合う部品を「つなげる行」で合体させ、最後に全文にします。\n　例（A, B, C, D は部品）：A → B → A+B → C → D → C+D → 全文\n　・つなげる行の英語は、隣り合う部品（またはつなげた行）を、そのままつなげたものです。\n　・つなげる行の日本語は、日本語の部品を自然につなげた文です（助詞・語尾は整えてよい）。\n　・最後の行は、入力の日本語の文と英文を、そのまま使います（★付き）。\n6. 主語の補い（部品の行だけ。つなげる行と全文の行には、絶対に補わない）：\n　動詞・助動詞から始まって主語がない部品は、先頭に主語（必要なら be動詞・助動詞）を1〜3語補い、単独で言える文にします。and / but で始まるときは、and / but を外して補います。\n　　例：is going to treat us → It is going to treat us\n　　例：and invited us to dinner → They invited us to dinner\n　補ったときは、日本語の先頭にも「(それは)」「(彼らは)」のように、かっこで主語を添えます。\n　補わないもの：so that / because / if / when / to不定詞 / 前置詞句で始まる部品、名詞句、命令文、動名詞・分詞（-ing, -ed）から始まる句。\n7. 英語に主語や目的語があるのに、その日本語の部品には出てこないとき（日本語で省略される「私は」など）は、日本語にかっこで「(私は)」のように添えます。\n8. 行数の目安（1文あたり、つなげる行と全文の行を含む）：英語10語以下→3〜5行／11〜20語→5〜8行／21語以上→7〜12行。\n9. 迷ったら、小さく自然なかたまりを選びます。\n\n■ 出力の前の確認（頭の中で行い、結果は書かない）\n□ 全行の英語が、全文の連続した一部分か（ルール6の補いを除く）\n□ つなげる行が、部品の単純なつなぎか\n□ 各行の日本語が、その行の英語の意味と合っているか\n□ 全文の行の英文が、入力の英文と1文字も違わないか\n□ 各文の最後の行に★が付いているか\n\n■ 例1\n（入力）\n雨が激しく降っていたので、私達は山の頂上まで登るのをあきらめなければならなかった。｜The heavy rain forced us to give up climbing to the top of the mountain.\n\n（出力）\n```\n# 例文：山登り\n激しい雨が｜The heavy rain\n(それが)私達にあきらめさせた｜It forced us to give up\n雨が激しく降っていたので、私達はあきらめなければならなかった｜The heavy rain forced us to give up\n登ること｜climbing\n山の頂上まで｜to the top of the mountain.\n山の頂上まで登ること｜climbing to the top of the mountain.\n★雨が激しく降っていたので、私達は山の頂上まで登るのをあきらめなければならなかった。｜The heavy rain forced us to give up climbing to the top of the mountain.\n```\n\n■ 例2\n（入力）\n少女は駅に着いたとたん傘を忘れたことに気づき、雨の中を家まで走って取りに戻った。｜The girl realized she had left her umbrella behind and ran back home through the rain to get it the moment she arrived at the station.\n\n（出力）\n```\n# 例文：忘れ物\n少女は傘を忘れたことに気づいた｜The girl realized she had left her umbrella behind\n(彼女は)家まで走って戻った｜She ran back home\n少女は傘を忘れたことに気づき、家まで走って戻った｜The girl realized she had left her umbrella behind and ran back home\n雨の中を｜through the rain\nそれを取りに｜to get it\n雨の中をそれを取りに｜through the rain to get it\n少女は傘を忘れたことに気づき、雨の中を家まで走って取りに戻った｜The girl realized she had left her umbrella behind and ran back home through the rain to get it\n駅に着いたとたん｜the moment she arrived at the station.\n★少女は駅に着いたとたん傘を忘れたことに気づき、雨の中を家まで走って取りに戻った。｜The girl realized she had left her umbrella behind and ran back home through the rain to get it the moment she arrived at the station.\n```\n\n■ 入力\n（ここから下を、あなたの文に書き換えてください。1行に1文、「日本語｜English」の形で書きます。複数の文を入れてもかまいません。）\n日本語の文。｜English sentence.\n",free:"あなたは、英作文・スピーキング教材の作成者です。\n私が渡す「日本語の文」を、正確な英文に訳し、その英文を積み上げ式の練習問題に分割してください。\n英文は、最初に1つ決めたら、そのあと1文字も変えてはいけません。\n\n■ 練習の仕組み\n日本語の意味のかたまりごとに短い部品を出題し、少しずつつなげて、最後に全文を英語で言えるようにします。\n\n■ 手順\n1. 日本語の文ごとに、英訳を1つ決める。（下の「英訳のルール」）\n2. その英文を、下の「分割のルール」で、積み上げ式の問題にする。\n3. コードブロック1つだけを出力する。\n\n■ 英訳のルール\n・日本語の意味を、落とさず、足さず、正確に訳します。\n・文法的に正しい、自然で標準的な英語にします。\n・特に指定がなければ、中学〜高校レベルの一般的な語彙と文型を使います。難しい語や、めずらしいイディオムは避けます。\n・日本語の1文は、原則として英語の1文に訳します（日本語の「。」の数を変えない）。\n・英訳が複数考えられるときは、最も標準的なものを1つだけ選びます。\n・関係詞節、分詞句、when / if / because などの節、to不定詞、前置詞句のように、かたまりに切りやすい構造を使ってかまいません。ただし、不自然にしてはいけません。\n・省略される主語（日本語の「私は」「彼らは」など）は、英語では自然に補います。\n\n■ 出力の形式\n・コードブロック1つだけを出力します。ブロックの外には、説明・前置き・あとがきを一切書きません。\n・1行が1問です。形は「日本語｜English」。区切りは全角の縦棒「｜」を1つだけ使います。日本語側にも英語側にも「｜」は入れません。\n・1行目は「# セット名」。入力の内容を表す短い日本語の題にします。\n・入力の1文ごとに、その積み上げの最後の行（全文の行）だけ、行頭に「★」を付けます。\n・全文の行の日本語は、入力の日本語を、そのまま使います。\n\n■ 分割のルール\n1. 決めた英文は、書き換えない。単語、語順、大文字・小文字、句読点（, ; . など）、ハイフン、かっこも、そのままです。\n2. 分ける単位は「日本語の意味のかたまり」です（主語のまとまり、動作、修飾する節、時・場所・理由・条件を表す句など）。英語の語順で並べます。日本語の語順と違うときは、その英語のかたまりが表す意味を、自然な日本語で書きます。\n3. 各行の英語は、全文の英語の「連続した一部分」にします。途中を飛ばしたり、順序を入れ替えたりしません（例外は、ルール6の主語の補いだけ）。\n4. 英語のかたまりは、だいたい2〜8語です。冠詞・前置詞・接続詞だけで始まる、または終わる切り方はしません。句読点は、そのかたまりの後ろに付いているものを、そのまま残します。\n5. 積み上げの並べ方：部品を左から順に出し、隣り合う部品を「つなげる行」で合体させ、最後に全文にします。\n　例（A, B, C, D は部品）：A → B → A+B → C → D → C+D → 全文\n　・つなげる行の英語は、隣り合う部品（またはつなげた行）を、そのままつなげたものです。\n　・つなげる行の日本語は、日本語の部品を自然につなげた文です（助詞・語尾は整えてよい）。\n6. 主語の補い（部品の行だけ。つなげる行と全文の行には、絶対に補わない）：\n　動詞・助動詞から始まって主語がない部品は、先頭に主語（必要なら be動詞・助動詞）を1〜3語補い、単独で言える文にします。and / but で始まるときは、and / but を外して補います。\n　　例：is going to treat us → It is going to treat us\n　　例：and invited us to dinner → They invited us to dinner\n　補ったときは、日本語の先頭にも「(それは)」「(彼らは)」のように、かっこで主語を添えます。\n　補わないもの：so that / because / if / when / to不定詞 / 前置詞句で始まる部品、名詞句、命令文、動名詞・分詞（-ing, -ed）から始まる句。\n7. 英語に主語や目的語があるのに、その日本語の部品には出てこないとき（日本語で省略される「私は」など）は、日本語にかっこで「(私は)」のように添えます。\n8. 行数の目安（1文あたり、つなげる行と全文の行を含む）：英語10語以下→3〜5行／11〜20語→5〜8行／21語以上→7〜12行。\n9. 迷ったら、小さく自然なかたまりを選びます。\n\n■ 出力の前の確認（頭の中で行い、結果は書かない）\n□ 英訳が、日本語の意味と合っていて、文法的に正しいか\n□ 全行の英語が、全文の連続した一部分か（ルール6の補いを除く）\n□ つなげる行が、部品の単純なつなぎか\n□ 各行の日本語が、その行の英語の意味と合っているか\n□ 全文の行の日本語が、入力の日本語と同じか\n□ 各文の最後の行に★が付いているか\n\n■ 例1\n（入力）\n雨が激しく降っていたので、私達は山の頂上まで登るのをあきらめなければならなかった。\n\n（出力）\n```\n# 例文：山登り\n激しい雨が｜The heavy rain\n(それが)私達にあきらめさせた｜It forced us to give up\n雨が激しく降っていたので、私達はあきらめなければならなかった｜The heavy rain forced us to give up\n登ること｜climbing\n山の頂上まで｜to the top of the mountain.\n山の頂上まで登ること｜climbing to the top of the mountain.\n★雨が激しく降っていたので、私達は山の頂上まで登るのをあきらめなければならなかった。｜The heavy rain forced us to give up climbing to the top of the mountain.\n```\n\n■ 例2\n（入力）\nその美術館を訪れ、古い絵が修復されているのを見て、私達は職人の技術の高さに驚いた。\n\n（出力）\n```\n# 例文：美術館\nその美術館を訪れ｜Visiting the museum\n古い絵が修復されているのを見て｜seeing old paintings being restored,\nその美術館を訪れ、古い絵が修復されているのを見て｜Visiting the museum and seeing old paintings being restored,\n私達は驚いた｜we were amazed\n職人の技術の高さに｜by the skill of the craftsmen.\n職人の技術の高さに驚いた｜we were amazed by the skill of the craftsmen.\n★その美術館を訪れ、古い絵が修復されているのを見て、私達は職人の技術の高さに驚いた。｜Visiting the museum and seeing old paintings being restored, we were amazed by the skill of the craftsmen.\n```\n\n■ 希望（任意。不要なら、この3行は消してください）\nレベル：中学〜高校\n文体：ふつう（会話でも書き言葉でも使える）\n使いたい表現：（あれば書く）\n\n■ 入力\n（ここから下を、あなたの日本語の文に書き換えてください。1行に1文です。複数の文を入れてもかまいません。）\n日本語の文。\n"};
 
@@ -732,7 +733,7 @@ var log={};
 var DEF={set:'all',filter:'all',order:'seq',mode:'normal',time:'auto1',readJa:true,readEn:true,pause:3,enRepeat:1,gap:3,listenShow:true,loop:false,vault:'20'};
 (function(){
   var raw=lsGet(LS_KEY);
-  if(raw){try{var o=JSON.parse(raw);if(o&&typeof o==='object'){store.custom=Array.isArray(o.custom)?o.custom:[];store.settings=o.settings||{}}}catch(e){}}
+  if(raw){try{var o=JSON.parse(raw);if(o&&typeof o==='object'){store.custom=Array.isArray(o.custom)?o.custom:[];store.settings=o.settings||{};if(o.seenGuide)store.seenGuide=true;if(o.resume&&typeof o.resume==='object'&&!Array.isArray(o.resume))store.resume=o.resume}}catch(e){}}
   var lr=lsGet(LOG_KEY);
   if(lr){try{var l=JSON.parse(lr);if(l&&typeof l==='object'&&!Array.isArray(l))log=l}catch(e){}}
 })();
@@ -857,6 +858,28 @@ function queueOrAll(){
   if(q.length||fm==='all')return {q:q,msg:''};
   setCfg('filter','all');
   return {q:buildQueue(),msg:emptyMsg(fm)+'「すべて」に戻して、続けて出題します。'};
+}
+/* ---- 続きから：「すべて・順番どおり」で解いているとき、選んでいるセットごとに次の問題を覚えておく ---- */
+function resumeSlot(){return (cfg('filter')==='all'&&cfg('order')==='seq')?'s:'+cfg('set'):null}
+function resumeAt(q){
+  var slot=resumeSlot(),r=slot&&store.resume&&store.resume[slot];
+  if(!r||!q.length)return 0;
+  for(var i=0;i<q.length;i++)if(q[i].key===r.k)return i;
+  return (r.i>0&&r.i<q.length)?r.i:0;
+}
+function resumeSave(){
+  if(!S||!S.slot)return;
+  if(!store.resume)store.resume={};
+  if(S.i>0){var q=cur();store.resume[S.slot]={k:q.key,i:S.i}}else delete store.resume[S.slot];
+  save();
+}
+function resumeClear(){if(S&&S.slot&&store.resume&&store.resume[S.slot]){delete store.resume[S.slot];save()}}
+/* スタート・続けて解く：続きがあればそこから */
+function startTracked(fromTop){
+  var q=queueOrAll().q;if(!q.length)return false;
+  var slot=resumeSlot(),at=fromTop?0:resumeAt(q);
+  if(fromTop&&slot&&store.resume&&store.resume[slot]){delete store.resume[slot];save()}
+  startQuiz(q,{slot:slot,at:at});return true;
 }
 function countBy(pred){
   var n=0;
@@ -1069,7 +1092,8 @@ function showSetup(){
     '<label class="chip" data-modes="listen"><input type="checkbox" id="fListenShow"'+(cfg('listenShow')?' checked':'')+'><span>英文を表示</span></label>'+
     '<label class="chip"><input type="checkbox" id="fLoop"'+(cfg('loop')?' checked':'')+'><span>ループ再生</span></label>'+
     '</div><p class="note">ループ再生：全問が終わったら、最初に戻って続けます。</p></div>';
-  h+='<div id="goNote" class="info hidden"></div><button id="go" class="btn pri big">スタート</button>';
+  h+='<div id="goNote" class="info hidden"></div><button id="go" class="btn pri big">スタート</button>'+
+    '<button id="goTop" class="linkbtn hidden">最初からやり直す</button>';
   h+=addSection();
   h+='<details><summary>バックアップ（別の端末に移す・念のため保存）</summary>'+
     '<p class="note">追加した問題、苦手の記録、学習カレンダーとブロックを、文字にして書き出せます。別の端末で「読み込む」と、同じ状態にできます。</p>'+
@@ -1094,8 +1118,18 @@ function showSetup(){
         note.classList.remove('hidden');
       }
     }
+    var at=(fm==='all'||!buildQueue().length)?resumeAtFor(q):0;
     go.disabled=!q.length;
-    go.textContent=q.length?label+'（'+q.length+'問）':'出題できる問題がありません';
+    go.textContent=!q.length?'出題できる問題がありません'
+      :at?label+'（'+(at+1)+'問目から・残り'+(q.length-at)+'問）'
+      :label+'（'+q.length+'問）';
+    $('#goTop').classList.toggle('hidden',!at);
+  }
+  /* 絞り込みが空で「すべて」に戻すときも、戻した後の設定で続きを探す */
+  function resumeAtFor(q){
+    if(cfg('filter')==='all')return resumeAt(q);
+    var keep=store.settings.filter;store.settings.filter='all';
+    var at=resumeAt(q);store.settings.filter=keep;return at;
   }
   function applyMode(){
     var m=cfg('mode');if(m==='auto'&&!SR)m='normal';
@@ -1131,13 +1165,16 @@ function showSetup(){
     b.onclick=function(){if(b.disabled)return;setCfg('mode',b.getAttribute('data-m'));applyMode()};
   });
   $('#dGuide').addEventListener('toggle',function(){if(!this.open&&!store.seenGuide){store.seenGuide=true;save()}});
-  $('#go').onclick=function(){
-    var r=queueOrAll(),q=r.q;if(!q.length)return;
+  function goStart(fromTop){
+    if(!buildQueue().length&&!buildQueue('all').length)return;
     store.seenGuide=true;save();
     // 音声は、タップ操作の直後でないと鳴らない端末があるため、ここで許可を取っておく
     try{if(hasTTS){var u=new SpeechSynthesisUtterance(' ');u.volume=0;window.speechSynthesis.speak(u)}}catch(e){}
-    startQuiz(q);
-  };
+    startTracked(fromTop);
+  }
+  $('#go').onclick=function(){goStart(false)};
+  $('#goTop').onclick=function(){goStart(true)};
+  $('#fOrder').addEventListener('change',updateStart);
   bindAdd();bindBackup();bindPlusTiles();
   applyMode();
 }
@@ -1240,9 +1277,10 @@ function bindBackup(){
 }
 /* ===== 出題（通常・連続・聞き流し共通） ===== */
 function cur(){return S.queue[S.i]}
-function startQuiz(queue){
-  stopAll();
-  S={queue:queue,i:0,res:[],done:false,began:false,begin:null,hints:0,round:1,paused:false,finished:false,mode:cfg('mode')};
+function startQuiz(queue,opt){
+  stopAll();opt=opt||{};
+  var at=(opt.at>0&&opt.at<queue.length)?opt.at:0;
+  S={queue:queue,i:at,slot:opt.slot||null,startAt:at,res:[],done:false,began:false,begin:null,hints:0,round:1,paused:false,finished:false,mode:cfg('mode')};
   if(S.mode==='auto'&&!SR)S.mode='normal';
   if(S.mode!=='normal')lockOn();
   renderQuiz();
@@ -1312,7 +1350,7 @@ function startQuestion(){
   stopAll();
   var q=cur(),auto=S.mode==='auto',id=runId;
   S.done=false;S.began=false;S.hints=0;S.begin=null;
-  updateHead();
+  updateHead();resumeSave();
   $('#ans').value='';$('#hint').textContent='';
   $('#answerArea').classList.remove('hidden');
   if($('#bJa'))$('#bJa').classList.remove('hidden');
@@ -1450,7 +1488,7 @@ function advance(){
       var q=queueOrAll().q;
       if(q.length){S.round++;S.queue=q;S.i=0;startQuestion();return}
     }
-    showResult();
+    resumeClear();showResult();
   }else startQuestion();
 }
 function quit(){
@@ -1462,7 +1500,7 @@ function quit(){
 function listenQuestion(){
   stopAll();
   var q=cur(),id=runId,gap=cfg('gap')*1000,n=cfg('enRepeat');
-  updateHead();
+  updateHead();resumeSave();
   $('#enshow').textContent='';
   setStatus('日本語','live');
   function playEn(k){
@@ -1488,6 +1526,7 @@ function nextListen(){
       var q=queueOrAll().q;
       if(q.length){S.round++;S.queue=q;S.i=0;listenQuestion();return}
     }
+    resumeClear();
     pendingMsg='聞き流しが終わりました（'+S.queue.length+'問）。';
     showSetup();return;
   }
@@ -1914,11 +1953,11 @@ function showResult(){
   var wrong=r.filter(function(x){return x.v!=='ok'});
   var fm=cfg('filter'),nextQ=buildQueue(),allMode=false;
   if(!nextQ.length&&fm!=='all'){nextQ=buildQueue('all');allMode=true}
-  var weakQ=buildQueue('weak');
+  var weakQ=buildQueue('weak'),againAt=allMode?0:resumeAt(nextQ);
   h+='<p class="note">記録は保存されています。間違えた問題は「苦手」に入り、2回続けて正解すると卒業します。</p>';
   if(allMode)h+='<div class="info">'+esc(emptyMsg(fm))+'「続けて解く」で、すべての問題からもう一周します。</div>';
   h+='<div class="rowbtn">'+(wrong.length?'<button id="bRetry" class="btn pri">間違いだけやり直す（'+wrong.length+'問）</button>':'')+
-    (nextQ.length?'<button id="bAgain" class="btn'+(wrong.length?'':' pri')+'">続けて解く（'+nextQ.length+'問）</button>':'')+'</div>'+
+    (nextQ.length?'<button id="bAgain" class="btn'+(wrong.length?'':' pri')+'">続けて解く（'+(againAt?(againAt+1)+'問目から':nextQ.length+'問')+'）</button>':'')+'</div>'+
     (weakQ.length&&fm!=='weak'?'<button id="bWeak" class="btn" style="width:100%;margin-bottom:8px">苦手だけ復習する（'+weakQ.length+'問）</button>':'')+
     '<button id="bSetup" class="btn" style="width:100%">設定へ戻る</button><div style="margin-top:14px">';
   h+=r.map(function(x,k){
@@ -1931,7 +1970,7 @@ function showResult(){
   if($('#bRetry'))$('#bRetry').onclick=function(){
     startQuiz(wrong.map(function(x){return {q:x.q,a:x.a,full:x.full,set:x.set,key:x.key}}));
   };
-  if($('#bAgain'))$('#bAgain').onclick=function(){var q=queueOrAll().q;if(q.length)startQuiz(q);else showSetup()};
+  if($('#bAgain'))$('#bAgain').onclick=function(){if(!startTracked(false))showSetup()};
   if($('#bWeak'))$('#bWeak').onclick=function(){var q=buildQueue('weak');if(q.length)startQuiz(q);else showSetup()};
   $('#bSetup').onclick=showSetup;
 }
